@@ -77,6 +77,6 @@ Open up a terminal and clone the repository onto your local computer:
 git clone https://github.com/asposato/single-cell_lineage-tracing.git
 cd single-cell_lineage-tracing
 ```
-!!! Remember to make a folder for `objects`!!!
+!!! Remember to add the seurat objects to `objects`!!!
 
 
