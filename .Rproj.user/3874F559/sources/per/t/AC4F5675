@@ -1,0 +1,27 @@
+{
+    "id": "AC4F5675",
+    "path": "~/Desktop/single-cell_lineage-tracing/visualize-lineage-barcodes.Rmd",
+    "project_path": "visualize-lineage-barcodes.Rmd",
+    "type": "r_markdown",
+    "hash": "3171965255",
+    "contents": "",
+    "dirty": false,
+    "created": 1732297895109.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "17,17",
+        "scrollLine": "13",
+        "docOutlineVisible": "0"
+    },
+    "folds": "22|42|32|3|\n",
+    "lastKnownWriteTime": 1732298648,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1732298648879,
+    "read_only": false,
+    "read_only_alternatives": []
+}

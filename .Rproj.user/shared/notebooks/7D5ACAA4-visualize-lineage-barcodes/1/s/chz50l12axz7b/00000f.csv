@@ -1,0 +1,27 @@
+"0","# load required packages"
+"0","library(dplyr)"
+"2","
+Attaching package: ‘dplyr’
+
+"
+"2","The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+"
+"2","The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+"
+"0","library(Seurat)"
+"2","Registered S3 method overwritten by 'data.table':
+  method           from
+  print.data.table     
+"
+"0","library(ggplot2)"
+"0","library(stringr)"
+"0","library(cowplot)"
+"0","library(reshape2)"
+"0","source(""bin/plot_barcode_on_UMAP.R"")"
+"0","source(""bin/functions_by_andy.R"")"

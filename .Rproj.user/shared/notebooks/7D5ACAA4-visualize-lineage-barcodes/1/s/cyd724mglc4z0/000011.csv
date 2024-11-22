@@ -1,0 +1,4 @@
+"0","meta <- unedited@meta.data"
+"0","meta$cell.id <- row.names(meta)"
+"0","meta <- as.data.frame(cbind(meta$cell.id, meta$diff.score, meta$barcode, meta$site1, meta$site2, meta$site3, meta$site4, meta$site5, meta$site6, meta$site7, meta$site8, meta$site9, meta$site10))"
+"0","write.table(meta, ""data/tables/unedited_diffscores.tsv"", sep = ""\t"", col.names = F, row.names = F, quote = F)"

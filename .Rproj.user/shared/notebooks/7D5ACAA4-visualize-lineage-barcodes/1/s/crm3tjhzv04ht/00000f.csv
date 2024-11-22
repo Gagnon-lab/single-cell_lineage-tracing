@@ -1,0 +1,3 @@
+"0","unique_unedited_barcodes <- as.data.frame(unique(unedited@meta.data$barcode))"
+"0","write.table(unique_unedited_barcodes, ""data/tables/unique_unedited_barcodes.tsv"", sep = ""\t"", col.names = F, row.names = F, quote = F)"
+"0",""

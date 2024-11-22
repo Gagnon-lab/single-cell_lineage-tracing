@@ -1,0 +1,337 @@
+---
+title: "add best lineage barcodes"
+author: "Andy Sposato"
+output: html_document
+---
+
+#### The purpose of this notebook is to add the best lineage barcode to each cell for which there is a high confidence lineage barcode. We generated a table with cell id and barcode information in the python notebook called find-best-lineage-barcode.ipynb. If you have not yet worked through that script, go back and do so. 
+
+```{r load packages, message=FALSE, warning=FALSE}
+# load required packages
+library(dplyr)
+library(Seurat)
+library(ggplot2)
+library(stringr)
+library(cowplot)
+```
+
+##### Connect lineage and transcriptome for unedited
+
+```{r load seurat object}
+# load the Seurat objects
+unedited <- readRDS("data/objects/unedited_w_diffscores.rds")
+```
+
+```{r load lineage barcode data}
+# load lineage barcode data
+un1_data <- read.table('data/tables/unedited1_bestlineagebarcode.tsv', sep = '\t', header = T)
+un2_data <- read.table('data/tables/unedited2_bestlineagebarcode.tsv', sep = '\t', header = T)
+```
+
+```{r unedited metadata}
+un_meta <- unedited@meta.data
+# add a column that holds cell.id (10X barcode)
+un_meta$cell.id <- row.names(un_meta)
+
+# we have a data frame of barcodes associated with unedited1 or unedited2 (un1_data and un2_data)
+# let's treat these metadata frames separately and then combine them later with rbind before adding back as meta data to the Seurat object
+un_meta_1 <- subset(un_meta, orig.ident == "mo22_A")
+un_meta_2 <- subset(un_meta, orig.ident == "mo22_B")
+
+# get list of cell ids as they appear in each meta data frame
+un_cells_1 <- as.data.frame(un_meta_1$cell.id)
+names(un_cells_1)[names(un_cells_1) == "un_meta_1$cell.id"] <- "cell.id"
+un_cells_2 <- as.data.frame(un_meta_2$cell.id)
+names(un_cells_2)[names(un_cells_2) == "un_meta_2$cell.id"] <- "cell.id"
+```
+
+```{r add_chars function defined}
+source("functions_by_andy.R")
+```
+
+```{r add suffix to cell-ids in lineage dataframe}
+head(un1_data$cell.id, n = 2)
+un1_data$cell.id <- add_chars(un1_data$cell.id, '-1_1')
+head(un1_data$cell.id, n = 2)
+
+head(un2_data$cell.id, n = 2)
+un2_data$cell.id <- add_chars(un2_data$cell.id, '-1_2')
+head(un2_data$cell.id, n = 2)
+```
+
+```{r join transcriptome cell ids with lineage cell ids}
+# using left_join from dplyr maintains the order of the cell_ids according to the Seurat object's metadata (stored those in un_cells_1 and un_cells_2) and only uses barcodes for cells which are in the transcriptome (Seurat object)
+un_cells_1_barcodes <- left_join(un_cells_1, un1_data)
+un_cells_2_barcodes <- left_join(un_cells_2, un2_data)
+```
+
+```{r condition subsample identity}
+# add category to differentiate sub samples
+un_cells_1_barcodes$condition <- "unedited1"
+un_cells_2_barcodes$condition <- "unedited2"
+```
+
+```{r get new copy of transcriptome cells}
+# recopy unedited_testis@meta.data 
+# don't want extra cell.id column this time
+# subset for just unedited1 cells 
+Cells = unedited@meta.data
+Cells1 <- subset(Cells, orig.ident == "mo22_A")
+Cells2 <- subset(Cells, orig.ident == "mo22_B")
+```
+
+```{r define the data to be added to transcriptome for unedited1 }
+# we define all the lineage barcode information we want to add
+barcode_count <- un_cells_1_barcodes[['barcode.count']]
+barcode <- un_cells_1_barcodes[['top.barcode']]
+site.1 <- un_cells_1_barcodes[['site1']]
+site.2 <- un_cells_1_barcodes[['site2']]
+site.3 <- un_cells_1_barcodes[['site3']]
+site.4 <- un_cells_1_barcodes[['site4']]
+site.5 <- un_cells_1_barcodes[['site5']]
+site.6 <- un_cells_1_barcodes[['site6']]
+site.7 <- un_cells_1_barcodes[['site7']]
+site.8 <- un_cells_1_barcodes[['site8']]
+site.9 <- un_cells_1_barcodes[['site9']]
+site.10 <- un_cells_1_barcodes[['site10']]
+```
+
+```{r add barcode data to Cells1}
+# modify Cells1 by adding in those columns
+Cells1['barcode.count'] <- barcode_count
+Cells1['barcode'] <- barcode
+Cells1['site1'] <- site.1
+Cells1['site2'] <- site.2
+Cells1['site3'] <- site.3
+Cells1['site4'] <- site.4
+Cells1['site5'] <- site.5
+Cells1['site6'] <- site.6
+Cells1['site7'] <- site.7
+Cells1['site8'] <- site.8
+Cells1['site9'] <- site.9
+Cells1['site10'] <- site.10
+```
+
+```{r subset columns for Seurat metadata integration}
+# now subset the columns that are going into the Seurat object for unedited1
+Cells1.info <- subset(Cells1, select = c('barcode.count', 'barcode', 'site1', 'site2','site3', 'site4','site5','site6','site7', 'site8','site9', 'site10'))
+```
+
+```{r define the data to be added to transcriptome for unedited2 }
+# we define all the lineage barcode information we want to add for unedited2
+barcode_count <- un_cells_2_barcodes[['barcode.count']]
+barcode <- un_cells_2_barcodes[['top.barcode']]
+site.1 <- un_cells_2_barcodes[['site1']]
+site.2 <- un_cells_2_barcodes[['site2']]
+site.3 <- un_cells_2_barcodes[['site3']]
+site.4 <- un_cells_2_barcodes[['site4']]
+site.5 <- un_cells_2_barcodes[['site5']]
+site.6 <- un_cells_2_barcodes[['site6']]
+site.7 <- un_cells_2_barcodes[['site7']]
+site.8 <- un_cells_2_barcodes[['site8']]
+site.9 <- un_cells_2_barcodes[['site9']]
+site.10 <- un_cells_2_barcodes[['site10']]
+```
+
+```{r add barcode data to Cells2}
+# modify Cells2 by adding in those columns
+Cells2['barcode.count'] <- barcode_count
+Cells2['barcode'] <- barcode
+Cells2['site1'] <- site.1
+Cells2['site2'] <- site.2
+Cells2['site3'] <- site.3
+Cells2['site4'] <- site.4
+Cells2['site5'] <- site.5
+Cells2['site6'] <- site.6
+Cells2['site7'] <- site.7
+Cells2['site8'] <- site.8
+Cells2['site9'] <- site.9
+Cells2['site10'] <- site.10
+```
+
+```{r subset columns for Seurat metadata integration}
+# now subset the columns that are going into the Seurat object for unedited2
+Cells2.info <- subset(Cells2, select = c('barcode.count', 'barcode', 'site1', 'site2','site3', 'site4','site5','site6','site7', 'site8','site9', 'site10'))
+```
+```{r combine unedited dataframes}
+# stack these two data frames on top of each other
+Cells.both_un <- rbind(Cells1.info, Cells2.info)
+
+# for plotting purposes later, we want to change 'NA' barcode.count labels to 0
+# d[is.na(d)] <- 0
+Cells.both_un$barcode.count[is.na(Cells.both_un$barcode.count)] <- 0
+```
+
+```{r add lineage barcode data to unedited transcriptome}
+# add back to Seurat object unedited
+unedited <- AddMetaData(unedited, Cells.both_un)
+```
+
+```{r save object}
+saveRDS(unedited, "data/objects/unedited_w_diffscores_lineage.rds")
+```
+
+##### Connect lineage and transcriptome for edited
+```{r load seurat object}
+# load the Seurat objects
+edited <- readRDS("data/objects/edited_w_diffscores.rds")
+```
+
+```{r load lineage barcode data}
+# load lineage barcode data
+ed1_data <- read.table('data/tables/inj_heat1_bestlineagebarcode.tsv', sep = '\t', header = T)
+ed2_data <- read.table('data/tables/inj_heat2_bestlineagebarcode.tsv', sep = '\t', header = T)
+```
+
+```{r unedited metadata}
+ed_meta <- edited@meta.data
+# add a column that holds cell.id (10X barcode)
+ed_meta$cell.id <- row.names(ed_meta)
+
+ed_meta_1 <- subset(ed_meta, orig.ident == "mo20_A")
+ed_meta_2 <- subset(ed_meta, orig.ident == "mo20_B")
+
+# get list of cell ids as they appear in each meta data frame
+ed_cells_1 <- as.data.frame(ed_meta_1$cell.id)
+names(ed_cells_1)[names(ed_cells_1) == "ed_meta_1$cell.id"] <- "cell.id"
+ed_cells_2 <- as.data.frame(ed_meta_2$cell.id)
+names(ed_cells_2)[names(ed_cells_2) == "ed_meta_2$cell.id"] <- "cell.id"
+```
+
+```{r add_chars function defined}
+# function for adding characters to cell IDs from lineage barcode data to match Seurat object cell IDs
+# in ed1_data (lineage barcode dataframe), the cell-ids are just a string of 16 letters, but ed_meta_1 (transcriptome dataframe), they have a -1 at the end. This is because we integrated two channels of 10X to make the edited object. 
+# So we'll add -1 to the cell-ids in the un1_data
+# This a function we can use each time
+# here x is the cell-id and y is the suffix we're going to add 
+add_chars <- function(x, y){
+  # remove the tails on cell.ids 
+  paste0(substr(x, 1, 16), y, sep = "")
+}
+```
+
+```{r add suffix to cell-ids in lineage dataframe}
+head(ed1_data$cell.id, n = 2)
+ed1_data$cell.id <- add_chars(ed1_data$cell.id, '-1')
+head(ed1_data$cell.id, n = 2)
+
+head(ed2_data$cell.id, n = 2)
+ed2_data$cell.id <- add_chars(ed2_data$cell.id, '-1')
+head(ed2_data$cell.id, n = 2)
+```
+
+```{r join transcriptome cell ids with lineage cell ids}
+# using left_join from dplyr maintains the order of the cell_ids according to the Seurat object's metadata (stored those in ed_cells_1 and ed_cells_2) and only uses barcodes for cells which are in the transcriptome (Seurat object)
+ed_cells_1_barcodes <- left_join(ed_cells_1, ed1_data)
+ed_cells_2_barcodes <- left_join(ed_cells_2, ed2_data)
+```
+
+```{r condition subsample identity}
+# add category to differentiate sub samples
+ed_cells_1_barcodes$condition <- "edited1"
+ed_cells_2_barcodes$condition <- "edited2"
+```
+
+```{r get new copy of transcriptome cells}
+# recopy edited@meta.data 
+# don't want extra cell.id column this time
+# subset for just edited1 cells 
+Cells = edited@meta.data
+Cells1 <- subset(Cells, orig.ident == "mo20_A")
+Cells2 <- subset(Cells, orig.ident == "mo20_B")
+```
+
+```{r define the data to be added to transcriptome for edited1 }
+# we define all the lineage barcode information we want to add
+barcode_count <- ed_cells_1_barcodes[['barcode.count']]
+barcode <- ed_cells_1_barcodes[['top.barcode']]
+site.1 <- ed_cells_1_barcodes[['site1']]
+site.2 <- ed_cells_1_barcodes[['site2']]
+site.3 <- ed_cells_1_barcodes[['site3']]
+site.4 <- ed_cells_1_barcodes[['site4']]
+site.5 <- ed_cells_1_barcodes[['site5']]
+site.6 <- ed_cells_1_barcodes[['site6']]
+site.7 <- ed_cells_1_barcodes[['site7']]
+site.8 <- ed_cells_1_barcodes[['site8']]
+site.9 <- ed_cells_1_barcodes[['site9']]
+site.10 <- ed_cells_1_barcodes[['site10']]
+```
+
+```{r add barcode data to Cells1}
+# modify Cells1 by adding in those columns
+Cells1['barcode.count'] <- barcode_count
+Cells1['barcode'] <- barcode
+Cells1['site1'] <- site.1
+Cells1['site2'] <- site.2
+Cells1['site3'] <- site.3
+Cells1['site4'] <- site.4
+Cells1['site5'] <- site.5
+Cells1['site6'] <- site.6
+Cells1['site7'] <- site.7
+Cells1['site8'] <- site.8
+Cells1['site9'] <- site.9
+Cells1['site10'] <- site.10
+```
+
+```{r subset columns for Seurat metadata integration}
+# now subset the columns that are going into the Seurat object for edited1
+Cells1.info <- subset(Cells1, select = c('barcode.count', 'barcode', 'site1', 'site2','site3', 'site4','site5','site6','site7', 'site8','site9', 'site10'))
+```
+
+```{r define the data to be added to transcriptome for edited2 }
+# we define all the lineage barcode information we want to add for edited2
+barcode_count <- ed_cells_2_barcodes[['barcode.count']]
+barcode <- ed_cells_2_barcodes[['top.barcode']]
+site.1 <- ed_cells_2_barcodes[['site1']]
+site.2 <- ed_cells_2_barcodes[['site2']]
+site.3 <- ed_cells_2_barcodes[['site3']]
+site.4 <- ed_cells_2_barcodes[['site4']]
+site.5 <- ed_cells_2_barcodes[['site5']]
+site.6 <- ed_cells_2_barcodes[['site6']]
+site.7 <- ed_cells_2_barcodes[['site7']]
+site.8 <- ed_cells_2_barcodes[['site8']]
+site.9 <- ed_cells_2_barcodes[['site9']]
+site.10 <- ed_cells_2_barcodes[['site10']]
+```
+
+```{r add barcode data to Cells2}
+# modify Cells2 by adding in those columns
+Cells2['barcode.count'] <- barcode_count
+Cells2['barcode'] <- barcode
+Cells2['site1'] <- site.1
+Cells2['site2'] <- site.2
+Cells2['site3'] <- site.3
+Cells2['site4'] <- site.4
+Cells2['site5'] <- site.5
+Cells2['site6'] <- site.6
+Cells2['site7'] <- site.7
+Cells2['site8'] <- site.8
+Cells2['site9'] <- site.9
+Cells2['site10'] <- site.10
+```
+
+```{r subset columns for Seurat metadata integration}
+# now subset the columns that are going into the Seurat object for edited2
+Cells2.info <- subset(Cells2, select = c('barcode.count', 'barcode', 'site1', 'site2','site3', 'site4','site5','site6','site7', 'site8','site9', 'site10'))
+```
+
+```{r combine edited dataframes}
+# stack these two data frames on top of each other
+Cells.both_ed <- rbind(Cells1.info, Cells2.info)
+
+# for plotting purposes later, we want to change 'NA' barcode.count labels to 0
+# d[is.na(d)] <- 0
+Cells.both_ed$barcode.count[is.na(Cells.both_ed$barcode.count)] <- 0
+```
+
+```{r add lineage barcode data to unedited transcriptome}
+# add back to Seurat object unedited
+edited <- AddMetaData(edited, Cells.both_ed)
+```
+
+```{r save object}
+saveRDS(edited, "data/objects/edited_w_diffscores_lineage.rds")
+```
+
+
+

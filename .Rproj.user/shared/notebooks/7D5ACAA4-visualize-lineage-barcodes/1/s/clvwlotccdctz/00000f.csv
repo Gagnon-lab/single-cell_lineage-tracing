@@ -1,0 +1,5 @@
+"0","for ranges_dictionary in barcodes_dict.values(): "
+"0","  for key, value in ranges_dictionary.items(): "
+"0","    cell_count = len(value)"
+"0","    ranges_dictionary[key].append(str(cell_count))"
+"0",""
