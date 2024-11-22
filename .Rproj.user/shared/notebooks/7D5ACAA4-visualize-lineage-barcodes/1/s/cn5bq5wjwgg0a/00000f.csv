@@ -1,2 +1,0 @@
-"0","unedited_diffranges <- read.table('data/tables/unedited_diffranges.tsv', sep = '\t', header = T)"
-"0","unedited <- AddMetaData(unedited, as.list(subset(unedited_diffranges, select = c('diff.range'))), col.name = 'diff.range')"

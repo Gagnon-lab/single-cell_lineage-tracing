@@ -1,8 +1,0 @@
-"0","unique_unedited_barcodes = open(data_folder + ""unique_unedited_barcodes.tsv"", ""r"")"
-"0","barcodes = []"
-"0","for barcode in unique_unedited_barcodes: "
-"0","  barcode_string = barcode.strip(""\n"")"
-"0","  if barcode_string != ""NA"":"
-"0","    barcodes.append(barcode_string)"
-"0","unique_unedited_barcodes.close()"
-"0",""
