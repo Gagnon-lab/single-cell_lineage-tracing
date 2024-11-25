@@ -1,7 +1,9 @@
 ---
 title: "scoring cells by differentiation"
 author: "Andy Sposato"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 #### The purpose of this notebook is to add differentation scores to Seurat objects. We do this by converting Seurat objects to URD objects, running URD, and adding the pseudotime information to a Seurat object's metadata as diff.score. 
@@ -9,8 +11,8 @@ output: html_document
 ##### Generate the Seurat objects
 In this example, I'll be using an unedited sample (yr1.6 or 20 mo.) and a double-edited sample (yr1.8 or 22 mo.)
 
-If you have already generated objects, skip to Run URD section. 
-You have likely already done this as you'll want to see quality of your atlas before you proceed with amplifying lineage barcodes from 10X cDNA.
+If you have already generated objects or have downloaded the 20 mo. and 22 mo. objects from Andy's Github/Google Drive, skip to Run URD section. 
+You have likely already generated your objectsas you'll want to see quality of your atlas before you proceed with amplifying lineage barcodes from 10X cDNA, but here are some steps just in case. 
 
 ```{r load packages, message=FALSE, warning=FALSE}
 # load required packages
@@ -27,13 +29,25 @@ library(scales)
 ```
 
 ```{r make 20 mo. object, message=FALSE, warning=FALSE}
+# read the 10X feature barcode matrix data
+# these are the CellRanger outputs you'll need:
+# filtered_feature_bc_matrix 
+#   barcodes.tsv.gz
+#   features.tsv.gz
+#   matrix.mtx.gz
 yr1.6_A.data <- Read10X(data.dir = 'data/18827X2/filtered_feature_bc_matrix/')
 yr1.6_A <- CreateSeuratObject(counts = yr1.6_A.data, project = 'yr1.6_A', min.cells = 3)
+# mark mt- RNAs as mitochondrial RNA reads
 yr1.6_A[['percent.mt']] <- PercentageFeatureSet(yr1.6_A, pattern = "mt-")
+# add helpful metadata to your object
 yr1.6_A$sub.sample <- "20mo"
 yr1.6_A$age <- "20 mo."
 yr1.6_A$condition <- "unedited"
+# nFeature_RNA is the number of unique genes 
+# because transcription is quite high in the testis, we kept cells with >200 genes but fewer than n genes, where n represents the largest value of the third quartile of each dataset
 yr1.6_A <- subset(yr1.6_A, subset = nFeature_RNA > 200 & nFeature_RNA < 4999)
+# eliminate cells with greater than 5% mitochondrial reads
+# when cells are lysed during dissociation, mitochondrial reads make up a large proportion of the reads captured. We subset based on this metric to avoid grouping dying cells into our data. 
 yr1.6_A <- subset(yr1.6_A, subset = percent.mt < 5)
 yr1.6_A<- NormalizeData(yr1.6_A)
 yr1.6_A <- FindVariableFeatures(yr1.6_A)
@@ -53,16 +67,20 @@ yr1.6_B <- FindVariableFeatures(yr1.6_B)
 yr1.6_B <- ScaleData(yr1.6_B)
 yr1.6_B <- RunPCA(yr1.6_B)
 
+# I run UMAP after integrating samples
+# here, yr1.6_A and yr1.6_B are cells from the same testis that were split across 2 channels of 10X
 yr1.6.anchors <- FindIntegrationAnchors(object.list = list(yr1.6_A, yr1.6_B), reduction = "cca", dims = 1:10)
 unedited <- IntegrateData(anchorset = yr1.6.anchors, dims = 1:10)
 DefaultAssay(unedited) <- "integrated"
 unedited <- ScaleData(unedited, assay = "integrated")
 unedited <- ScaleData(unedited, assay = "RNA")
 unedited <- RunPCA(unedited, features = VariableFeatures(object = unedited))
+# You can use ElbowPlot() to determine a good range for dimensions to use. This will likely be between 10 and 20.
 unedited <- RunUMAP(unedited, reduction = 'pca', dims = 1:10)
 unedited <- FindNeighbors(unedited, reduction = 'pca', dims = 1:10)
 unedited <- FindClusters(unedited, resolution = 0.5)
 
+# I remove these intermediate objects since I no longer need them to keep the "mess" in Global Environment manageable
 rm(yr1.6_A.data, yr1.6_B.data, yr1.6_A, yr1.6_B, yr1.6.anchors)
 ```
 
@@ -71,7 +89,7 @@ yr1.8_A.data <- Read10X(data.dir = 'data/18827X1/filtered_feature_bc_matrix/')
 # create Seurat object
 yr1.8_A <- CreateSeuratObject(counts = yr1.8_A.data, project = 'yr1.8_A', min.cells = 3)
 yr1.8_A[['percent.mt']] <- PercentageFeatureSet(yr1.8_A, pattern = "mt-")
-yr1.8_A$sub.sample <- "22mo" # for comparison of data set X3 vs X4
+yr1.8_A$sub.sample <- "22mo" 
 yr1.8_A$age <- "22 mo."
 yr1.8_A$condition <- "edited"
 yr1.8_A <- subset(yr1.8_A, subset = nFeature_RNA > 200 & nFeature_RNA < 6962)
@@ -108,14 +126,16 @@ rm(yr1.8_A.data, yr1.8_B.data, yr1.8_A, yr1.8_B, yr1.8.anchors)
 ```
 
 ##### Run URD 
-URD is a pseudotime approach that assigns a differentiation score to each individual cell in your object. The more cells you have, the longer URD takes to run. You may consider running this program as a scheduled job through CHPC. 
+URD is a pseudotime approach that assigns a differentiation score to each individual cell in your object. It was developed by Jeff Farrell who helped us get started with this. We used an approach similar to the hydra male transcriptome project from Celina Juliano's lab: https://github.com/cejuliano/hydra_single_cell/blob/master/SA14_URD_MaleTranscriptome.pdf 
+
+The more cells you have, the longer URD takes to run. You may consider running this program as a scheduled job through CHPC.
 
 ```{r load objects}
 unedited <- readRDS("data/objects/mo22.rds")
 edited <- readRDS("data/objects/mo20.rds")
 ```
 
-We're looking at ddx4 as a marker for spermatogonia. The most undifferentiated cells will express this marker well and help us determine where the "beginning" of differentiation is. This will be important for setting the root cells when running URD.
+We're looking at ddx4 as a marker for spermatogonia. The most undifferentiated cells will express this marker well and help us determine where the "beginning" of differentiation is. This will be important for setting the root cells when running URD. It's worth noting that URD works best when a clear continuum of cells exists. 
 ```{r plot ddx4 to see directionality}
 DimPlot(unedited, label = T, label.size = 5)
 FeaturePlot(unedited, "dazl")
@@ -123,7 +143,7 @@ DimPlot(edited, label = T, label.size = 5)
 FeaturePlot(edited, "dazl")
 ```
 
-This seuratV3ToURD function was written by Jeff Farrell. It converts a Seurat object to an URD object. Feel free to open it up in a text editor to review it. 
+This seuratV3ToURD function was written by Jeff. It converts a Seurat object to an URD object. Feel free to open it up in a text editor to review it.
 ```{r convert Seurat object to URD object}
 source("bin/SeuratV3ToURD.R")
 unedited_URD <- seuratV3ToURD(unedited)
@@ -137,9 +157,11 @@ unedited_URD@meta$seurat_clusters <- clusters
 var.genes <- findVariableGenes(unedited_URD, set.object.var.genes=F, diffCV.cutoff=0.3, mean.min=.005, mean.max=100, main.use="", do.plot = F)
 unedited_URD@var.genes <- var.genes
 
+# the knn should be set to the square root of the total number of cells in your object
 unedited_URD <- calcDM(unedited_URD, knn = 57)
 
 # the root cells for the forward calculation should be your spermatogonia clusters
+# you can also define a vector of cells instead of whole clusters
 root.cells <- cellsInCluster(unedited_URD, "seurat_clusters", c("4", "8"))
 unedited_URD.floods <- floodPseudotime(unedited_URD, root.cells = root.cells, n=20, minimum.cells.flooded = 2, verbose=F)
 unedited_URD <- floodPseudotimeProcess(unedited_URD, unedited_URD.floods, floods.name="pseudotime.fwd")
@@ -151,6 +173,7 @@ unedited_URD <- floodPseudotimeProcess(unedited_URD, unedited_URD.floods, floods
 
 # normalize values 
 unedited_URD@pseudotime$pseudotime.fwd.norm <- unedited_URD@pseudotime$pseudotime.fwd/max(unedited_URD@pseudotime$pseudotime.fwd)
+# 1 - reverse scores
 unedited_URD@pseudotime$pseudotime.rev.norm <- 1 - unedited_URD@pseudotime$pseudotime.rev/max(unedited_URD@pseudotime$pseudotime.rev)
 
 # take the average of the normalized forward and reverse
@@ -171,6 +194,7 @@ edited_URD@meta$seurat_clusters <- clusters
 var.genes <- findVariableGenes(edited_URD, set.object.var.genes=F, diffCV.cutoff=0.3, mean.min=.005, mean.max=100, main.use="", do.plot = F)
 edited_URD@var.genes <- var.genes
 
+# the knn should be set to the square root of the total number of cells in your object
 edited_URD <- calcDM(edited_URD, knn = 51)
 
 # the root cells for the forward calculation should be your spermatogonia clusters
@@ -232,7 +256,7 @@ saveRDS(unedited, "data/objects/unedited_w_diffscores.rds")
 saveRDS(edited, "data/objects/edited_w_diffscores.rds")
 ```
 
-```{r check diff.scores were added}
-FeaturePlot(unedited, "diff.score")
-FeaturePlot(edited, "diff.score")
+```{r check diff.scores were added appropriately}
+FeaturePlot(unedited, "diff.score", cols = c('red', 'orange', 'yellow', 'green', 'blue','purple'))
+FeaturePlot(edited, "diff.score", cols = c('red', 'orange', 'yellow', 'green', 'blue','purple'))
 ```
