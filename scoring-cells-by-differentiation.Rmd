@@ -255,8 +255,3 @@ edited@meta.data$diff.score <- edited_diffs
 saveRDS(unedited, "data/objects/unedited_w_diffscores.rds")
 saveRDS(edited, "data/objects/edited_w_diffscores.rds")
 ```
-
-```{r check diff.scores were added appropriately}
-FeaturePlot(unedited, "diff.score", cols = c('red', 'orange', 'yellow', 'green', 'blue','purple'))
-FeaturePlot(edited, "diff.score", cols = c('red', 'orange', 'yellow', 'green', 'blue','purple'))
-```
