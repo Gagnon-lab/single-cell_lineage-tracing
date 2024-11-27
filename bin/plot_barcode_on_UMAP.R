@@ -18,7 +18,7 @@ plot_barcode <- function(input_barcode, seurat_object, color) {
   q$cell.id <- row.names(q)
   # convert cell.id column into a vector (need vector of cells for cells.highlight)
   cells.to.highlight <- q$cell.id
-  print(length(cells.to.highlight))
+  #print(length(cells.to.highlight))
   title_barcode <- paste(paste(barcode[[1]], barcode[[2]], barcode[[3]], barcode[[4]], barcode[[5]], barcode[[6]], barcode[[7]], barcode[[8]], barcode[[9]], barcode[[10]], sep = "_"))
   UMAP_coordinates <- as.data.frame(seurat_object@reductions[["umap"]]@cell.embeddings)
   
